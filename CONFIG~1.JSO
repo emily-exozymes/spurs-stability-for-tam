@@ -1,0 +1,47 @@
+{
+  "$schema": "https://app.tamarind.bio/tamarind-tool.schema.json",
+  "displayName": "SPURS-Stability",
+  "description": "Predict mutation-induced stability changes (ddG) for protein variants using SPURS.",
+  "functions": [
+    "Loads the pretrained SPURS single-mutation and multi-mutation models from HuggingFace (cyclization9/SPURS), pre-cached in the image.",
+    "Parses an input PDB and scores each row of a mutations CSV: single mutants (e.g. 'W1A') routed to the single model, multi-mutants ('V2C:P3T') routed to the multi model.",
+    "Returns a CSV with one ddG value per row plus optional ranking.",
+    "Reference: Li & Luo, Nature Communications 2025 (https://www.nature.com/articles/s41467-025-67609-4)."
+  ],
+  "gpuType": "L4",
+  "cpu": 4,
+  "memory": "32Gi",
+  "inputs": [
+    {
+      "name": "structure",
+      "displayName": "Protein structure",
+      "type": "pdb",
+      "required": true,
+      "descr": "Input PDB. Mutation positions are 1-indexed against this structure (matching the PDB residue numbering)."
+    },
+    {
+      "name": "chain",
+      "displayName": "Chain ID",
+      "type": "text",
+      "required": false,
+      "default": "A",
+      "descr": "Chain identifier to analyze. Defaults to A."
+    },
+    {
+      "name": "mutations_csv",
+      "displayName": "Mutations CSV",
+      "type": "file",
+      "extension": ["csv"],
+      "required": true,
+      "descr": "CSV with a 'mutant' column. Single mutations as 'W1A'; multi-mutations as 'V2C:P3T' (colon- or comma-separated). One mutation set per row."
+    },
+    {
+      "name": "pdb_name",
+      "displayName": "PDB name (label)",
+      "type": "text",
+      "required": false,
+      "default": "input",
+      "descr": "Label used internally by SPURS' featurizer. Output-only - does not change the prediction."
+    }
+  ]
+}
