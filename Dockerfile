@@ -42,7 +42,6 @@ RUN pip install --no-cache-dir \
     pyyaml
 
 # Pre-fetch both SPURS checkpoints from HuggingFace at build time.
-# Tamarind runtime containers have no internet, so models MUST be baked in.
 # Using snapshot_download grabs the whole repo in one shot (config + ckpts +
 # any tokenizer/aux files) and is more robust than per-file hf_hub_download.
 RUN python -c "from huggingface_hub import snapshot_download; \
@@ -53,7 +52,7 @@ RUN python -c "from huggingface_hub import snapshot_download; \
 RUN chmod -R a+rX /opt/hf_cache
 
 # Force offline mode at runtime so HF never attempts a HEAD/network call.
-# This is the critical fix — without it, cached files still trigger HEAD
+# This is the critical fix - without it, cached files still trigger HEAD
 # requests to check for updates, which fail when there's no DNS.
 ENV HF_HUB_OFFLINE=1
 ENV TRANSFORMERS_OFFLINE=1
