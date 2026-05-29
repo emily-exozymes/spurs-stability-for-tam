@@ -41,15 +41,21 @@ RUN pip install --no-cache-dir \
     tqdm \
     pyyaml
 
-# Pre-fetch both SPURS checkpoints from HuggingFace at build time.
-# Using snapshot_download grabs the whole repo in one shot (config + ckpts +
-# any tokenizer/aux files) and is more robust than per-file hf_hub_download.
-RUN python -c "from huggingface_hub import snapshot_download; \
-    snapshot_download(repo_id='cyclization9/SPURS', cache_dir='/opt/hf_cache'); \
-    print('SPURS snapshot cached to /opt/hf_cache')"
+# Pre-fetch both SPURS checkpoints from HuggingFace at build time, then
+# COPY them out of the HF cache to fixed paths. The HF cache layout uses
+# commit-hash subfolders and a `refs/main` indirection that hf_hub_download
+# cannot resolve in offline mode without a network HEAD call - so at runtime
+# we bypass HF entirely and load straight from /app/checkpoints/.
+RUN python -c "import shutil, os; \
+    from huggingface_hub import snapshot_download; \
+    src = snapshot_download(repo_id='cyclization9/SPURS', cache_dir='/opt/hf_cache'); \
+    os.makedirs('/app/checkpoints', exist_ok=True); \
+    shutil.copytree(os.path.join(src, 'spurs'), '/app/checkpoints/spurs', dirs_exist_ok=True); \
+    shutil.copytree(os.path.join(src, 'spurs_multi'), '/app/checkpoints/spurs_multi', dirs_exist_ok=True); \
+    print('SPURS checkpoints copied to /app/checkpoints/')"
 
-# Make the cache readable by any UID Tamarind happens to use at runtime.
-RUN chmod -R a+rX /opt/hf_cache
+# Make checkpoints readable by any UID Tamarind happens to use at runtime.
+RUN chmod -R a+rX /app/checkpoints
 
 # Force offline mode at runtime so HF never attempts a HEAD/network call.
 # This is the critical fix - without it, cached files still trigger HEAD

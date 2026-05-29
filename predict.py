@@ -55,13 +55,35 @@ if device.type != "cuda":
 else:
     print(f"GPU: {torch.cuda.get_device_name(0)}")
 
-# ---------- Load models ----------
-from spurs.inference import (
-    get_SPURS_from_hub,
-    get_SPURS_multi_from_hub,
-    parse_pdb,
-    parse_pdb_for_mutation,
-)
+# ---------- Load models (from local paths baked into the image) ----------
+# Tamarind runtime has no internet, so we load from /app/checkpoints/ instead
+# of get_SPURS_from_hub() which always tries a HEAD call to huggingface.co.
+import os as _os
+from omegaconf import OmegaConf
+from spurs.inference import parse_pdb, parse_pdb_for_mutation, _load_model_state_dict, _seed_everything
+
+SPURS_SINGLE_PATH = "/app/checkpoints/spurs"
+SPURS_MULTI_PATH  = "/app/checkpoints/spurs_multi"
+
+def get_SPURS_local(ckpt_path, device):
+    """Load the SPURS single-mutation model from a local checkpoint directory."""
+    cfg = OmegaConf.load(_os.path.join(ckpt_path, ".hydra/config.yaml"))
+    del cfg["model"]["_target_"]
+    _seed_everything(cfg["train"]["seed"])
+    from spurs.models.stability.spurs import SPURS
+    model = SPURS(cfg["model"]).to(device)
+    model = _load_model_state_dict(model, _os.path.join(ckpt_path, "checkpoints/best.ckpt"))
+    return model, cfg
+
+def get_SPURS_multi_local(ckpt_path, device):
+    """Load the SPURS multi-mutation model from a local checkpoint directory."""
+    cfg = OmegaConf.load(_os.path.join(ckpt_path, ".hydra/config.yaml"))
+    del cfg["model"]["_target_"]
+    _seed_everything(cfg["train"]["seed"])
+    from spurs.models.stability.spurs_multi import SPURSMulti
+    model = SPURSMulti(cfg["model"]).to(device)
+    model = _load_model_state_dict(model, _os.path.join(ckpt_path, "checkpoints/best.ckpt"))
+    return model, cfg
 
 # Classify rows up front so we only load the model(s) we actually need.
 def split_mut_tokens(s):
@@ -80,15 +102,15 @@ model_single = cfg_single = pdb_single = None
 model_multi  = cfg_multi  = pdb_multi  = None
 
 if has_single:
-    print("Loading SPURS single model...")
-    model_single, cfg_single = get_SPURS_from_hub(device=str(device))
+    print("Loading SPURS single model from", SPURS_SINGLE_PATH)
+    model_single, cfg_single = get_SPURS_local(SPURS_SINGLE_PATH, device=str(device))
     model_single.eval()
     pdb_single = parse_pdb(pdb_path, PDB_NAME, CHAIN, cfg_single, device=str(device))
     print(f"  WT length: {len(pdb_single['seq'])}")
 
 if has_multi:
-    print("Loading SPURS multi model...")
-    model_multi, cfg_multi = get_SPURS_multi_from_hub(device=str(device))
+    print("Loading SPURS multi model from", SPURS_MULTI_PATH)
+    model_multi, cfg_multi = get_SPURS_multi_local(SPURS_MULTI_PATH, device=str(device))
     model_multi.eval()
     pdb_multi = parse_pdb(pdb_path, PDB_NAME, CHAIN, cfg_multi, device=str(device))
 
