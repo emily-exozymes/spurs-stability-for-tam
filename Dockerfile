@@ -41,18 +41,22 @@ RUN pip install --no-cache-dir \
     tqdm \
     pyyaml
 
-# Pre-fetch both SPURS checkpoints from HuggingFace at build time, then
-# COPY them out of the HF cache to fixed paths. The HF cache layout uses
-# commit-hash subfolders and a `refs/main` indirection that hf_hub_download
-# cannot resolve in offline mode without a network HEAD call - so at runtime
-# we bypass HF entirely and load straight from /app/checkpoints/.
+# Pre-fetch both SPURS checkpoints from HuggingFace at build time. Download
+# each specific file (snapshot_download has been observed to skip hidden
+# .hydra/ directories in some versions). Copy them to fixed local paths so
+# runtime never touches the HF cache or network.
 RUN python -c "import shutil, os; \
-    from huggingface_hub import snapshot_download; \
-    src = snapshot_download(repo_id='cyclization9/SPURS', cache_dir='/opt/hf_cache'); \
-    os.makedirs('/app/checkpoints', exist_ok=True); \
-    shutil.copytree(os.path.join(src, 'spurs'), '/app/checkpoints/spurs', dirs_exist_ok=True); \
-    shutil.copytree(os.path.join(src, 'spurs_multi'), '/app/checkpoints/spurs_multi', dirs_exist_ok=True); \
-    print('SPURS checkpoints copied to /app/checkpoints/')"
+    from huggingface_hub import hf_hub_download; \
+    files = [ \
+        ('spurs',       '.hydra/config.yaml'), \
+        ('spurs',       'checkpoints/best.ckpt'), \
+        ('spurs_multi', '.hydra/config.yaml'), \
+        ('spurs_multi', 'checkpoints/best.ckpt'), \
+    ]; \
+    [os.makedirs(f'/app/checkpoints/{s}/{os.path.dirname(f)}', exist_ok=True) for s, f in files]; \
+    [shutil.copy(hf_hub_download(repo_id='cyclization9/SPURS', filename=f'{s}/{f}'), f'/app/checkpoints/{s}/{f}') for s, f in files]; \
+    print('SPURS checkpoints copied to /app/checkpoints/'); \
+    import subprocess; subprocess.run(['find', '/app/checkpoints', '-type', 'f'])"
 
 # Make checkpoints readable by any UID Tamarind happens to use at runtime.
 RUN chmod -R a+rX /app/checkpoints
