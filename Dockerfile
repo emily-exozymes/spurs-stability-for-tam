@@ -53,13 +53,13 @@ RUN python -c "import shutil, os; \
         ('spurs_multi', '.hydra/config.yaml'), \
         ('spurs_multi', 'checkpoints/best.ckpt'), \
     ]; \
-    [os.makedirs(f'/app/checkpoints/{s}/{os.path.dirname(f)}', exist_ok=True) for s, f in files]; \
-    [shutil.copy(hf_hub_download(repo_id='cyclization9/SPURS', filename=f'{s}/{f}'), f'/app/checkpoints/{s}/{f}') for s, f in files]; \
-    print('SPURS checkpoints copied to /app/checkpoints/'); \
-    import subprocess; subprocess.run(['find', '/app/checkpoints', '-type', 'f'])"
+    [os.makedirs(f'/opt/spurs_checkpoints/{s}/{os.path.dirname(f)}', exist_ok=True) for s, f in files]; \
+    [shutil.copy(hf_hub_download(repo_id='cyclization9/SPURS', filename=f'{s}/{f}'), f'/opt/spurs_checkpoints/{s}/{f}') for s, f in files]; \
+    print('SPURS checkpoints copied to /opt/spurs_checkpoints/'); \
+    import subprocess; subprocess.run(['find', '/opt/spurs_checkpoints', '-type', 'f'])"
 
 # Make checkpoints readable by any UID Tamarind happens to use at runtime.
-RUN chmod -R a+rX /app/checkpoints
+RUN chmod -R a+rX /opt/spurs_checkpoints
 
 # Force offline mode at runtime so HF never attempts a HEAD/network call.
 # This is the critical fix - without it, cached files still trigger HEAD

@@ -62,8 +62,8 @@ import os as _os
 from omegaconf import OmegaConf
 from spurs.inference import parse_pdb, parse_pdb_for_mutation, _load_model_state_dict, _seed_everything
 
-SPURS_SINGLE_PATH = "/app/checkpoints/spurs"
-SPURS_MULTI_PATH  = "/app/checkpoints/spurs_multi"
+SPURS_SINGLE_PATH = "/opt/spurs_checkpoints/spurs"
+SPURS_MULTI_PATH  = "/opt/spurs_checkpoints/spurs_multi"
 
 def get_SPURS_local(ckpt_path, device):
     """Load the SPURS single-mutation model from a local checkpoint directory."""
@@ -84,6 +84,7 @@ def get_SPURS_multi_local(ckpt_path, device):
     model = SPURSMulti(cfg["model"]).to(device)
     model = _load_model_state_dict(model, _os.path.join(ckpt_path, "checkpoints/best.ckpt"))
     return model, cfg
+
 
 # Classify rows up front so we only load the model(s) we actually need.
 def split_mut_tokens(s):
