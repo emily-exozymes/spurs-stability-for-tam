@@ -61,6 +61,21 @@ RUN python -c "import shutil, os; \
 # Make checkpoints readable by any UID Tamarind happens to use at runtime.
 RUN chmod -R a+rX /opt/spurs_checkpoints
 
+# SPURS calls fair-esm's load_model_and_alphabet_hub() internally, which
+# downloads the ESM2-650M backbone from dl.fbaipublicfiles.com to
+# $TORCH_HOME/hub/checkpoints/. Pre-fetch both the model and its
+# contact-regression weights so runtime never needs network. Set
+# TORCH_HOME at runtime via envVars in config.json to point here.
+RUN mkdir -p /opt/torch_hub/hub/checkpoints && \
+    cd /opt/torch_hub/hub/checkpoints && \
+    python -c "import urllib.request, os; \
+    urllib.request.urlretrieve('https://dl.fbaipublicfiles.com/fair-esm/models/esm2_t33_650M_UR50D.pt', 'esm2_t33_650M_UR50D.pt'); \
+    urllib.request.urlretrieve('https://dl.fbaipublicfiles.com/fair-esm/regression/esm2_t33_650M_UR50D-contact-regression.pt', 'esm2_t33_650M_UR50D-contact-regression.pt'); \
+    print('ESM2-650M cached at /opt/torch_hub/hub/checkpoints/'); \
+    import subprocess; subprocess.run(['ls', '-la', '/opt/torch_hub/hub/checkpoints/'])"
+
+RUN chmod -R a+rX /opt/torch_hub
+
 # Force offline mode at runtime so HF never attempts a HEAD/network call.
 # This is the critical fix - without it, cached files still trigger HEAD
 # requests to check for updates, which fail when there's no DNS.
