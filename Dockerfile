@@ -25,9 +25,11 @@ RUN pip install --no-cache-dir \
     --extra-index-url https://download.pytorch.org/whl/cu121 \
     torch==2.4.0
 
-# SPURS inference-only deps (mirrors requirements.inference.txt on the beta branch).
-# huggingface_hub pinned <0.26 to avoid the closed-httpx-client retry bug
-# (newer versions reuse a closed httpx client on retry and crash).
+# SPURS inference-only deps. Beyond the maintainers' requirements.inference.txt
+# we also need lmdb + atom3d - spurs/datamodules/datasets/utils.py imports both
+# unconditionally at module load (`from atom3d.datasets import LMDBDataset`)
+# even on the inference path, so they're effectively required.
+# huggingface_hub pinned <0.26 to avoid the closed-httpx-client retry bug.
 RUN pip install --no-cache-dir \
     "omegaconf>=2.3" \
     "huggingface_hub>=0.20,<0.26" \
@@ -39,7 +41,9 @@ RUN pip install --no-cache-dir \
     "numpy>=1.24,<2" \
     pandas \
     tqdm \
-    pyyaml
+    pyyaml \
+    lmdb \
+    atom3d
 
 # Pre-fetch both SPURS checkpoints from HuggingFace at build time. Download
 # each specific file (snapshot_download has been observed to skip hidden
