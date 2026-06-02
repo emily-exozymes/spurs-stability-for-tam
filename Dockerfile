@@ -3,6 +3,13 @@ FROM mambaorg/micromamba:1.5.8
 USER root
 WORKDIR /app
 
+# Build tools needed because `atom3d` (a SPURS dep) depends on `freesasa`,
+# which ships only as a source distribution and requires a C compiler to
+# build its wheel during pip install.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN micromamba install -y -n base -c conda-forge \
     python=3.11 \
     "setuptools<81" \
